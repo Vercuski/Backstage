@@ -1,0 +1,94 @@
+# Notice the v1beta3 version
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+# some metadata about the template itself
+metadata:
+  name: copy-template-repo
+  title: Clone Template Repo
+  description: Clone a repo and replace the project key
+spec:
+  owner: architects
+  type: service
+
+  # these are the steps which are rendered in the frontend with the form input
+  parameters:
+    - title: Fill in some steps
+      required:
+        - name
+      properties:
+        newProjectKey:
+          title: New Project Key
+          type: string
+          description: Project Key of the component to create
+          default: 'NewRepo'
+          ui:autofocus: true
+          ui:options:
+            rows: 1
+        templateProjectKey:
+          title: Template Project Key
+          type: string
+          description: Project Key of the template to copy from
+          default: 'TemplateRepo'
+          ui:options:
+            rows: 1
+        name:
+          title: Name
+          type: string
+          description: Name of the component
+          default: 'TemplateComponent'
+          ui:options:
+            rows: 1
+        owner:
+          title: Owner
+          type: string
+          description: Owner of the component
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        repoProject:
+          title: Repo Project
+          type: string
+          description: The GitHub Repo to create
+          default: Team1
+          enum:
+            - Team1
+            - Team2
+            - Team3
+          enumNames:
+            - 'Team #1'
+            - 'Team #2'
+            - 'Team #3'
+
+  # here's the steps that are executed in series in the scaffolder backend
+  steps:
+    - id: pull-template
+      name: Pull Template Repo
+      action: fetch:plain
+      input:
+        url: https://github.com/Vercuski/${{ parameters.templateProjectKey }}
+    - id: replace-project-key
+      name: Update Project Keys
+      action: replaceProjectKey
+      input:
+        templateProjectKey: ${{ parameters.templateProjectKey }}
+        newProjectKey: ${{ parameters.newProjectKey }}
+        owner: ${{ parameters.owner }}
+        description: ${{ parameters.name }}
+    - id: create-repo
+      name: Create New Repo
+      action: publish:github
+      input:
+        repoUrl: https://github.com/Vercuski/${{ parameters.newProjectKey }}
+        description: ${{ parameters.name }}
+        repoVisibility: private
+        defaultBranch: master
+
+  # some outputs which are saved along with the job for use in the frontend
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}
